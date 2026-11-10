@@ -519,7 +519,7 @@ async function renderPresensi(app){
   app.innerHTML = `<div class="card" style="padding:10px 14px"><b>Kehadiran Anda hari ini:</b> ${myInfo}</div>
     <div class="card"><h2>Presensi Santri</h2>
     <div class="grid2"><div><label class="f" for="pTgl">Tanggal</label><input id="pTgl" type="date" max="${ymd()}" value="${esc(P.tanggal)}"></div>
-    <div><label class="f" for="pKls">Kelompok</label><select id="pKls">${ks.map(k=>`<option value="${esc(k.ID_KELOMPOK)}" ${k.ID_KELOMPOK===P.kelas?'selected':''}>${esc(k.NAMA_KELOMPOK)}${S.user&&k.ID_GURU===S.user.ID_GURU?' ★':''}</option>`).join('')}</select></div></div>
+    <div><label class="f" for="pKls">${esc(LBL())}</label><select id="pKls">${ks.map(k=>`<option value="${esc(k.ID_KELOMPOK)}" ${k.ID_KELOMPOK===P.kelas?'selected':''}>${esc(k.NAMA_KELOMPOK)}${S.user&&k.ID_GURU===S.user.ID_GURU?' ★':''}</option>`).join('')}</select></div></div>
     <div class="muted" style="margin-top:6px">Guru pengampu: ${esc(kel?.NAMA_GURU||'-')} · ${P.murid.length} santri ${P.exist.size?'· <span class="pill g">sudah pernah disimpan — mengedit</span>':'· <span class="pill">belum diisi</span>'}</div>
     <div class="summary" id="sum"></div>
     <div class="btns noprint"><button class="btn sec sm" data-act="semuaHadir">Setel semua Hadir</button>
@@ -527,7 +527,7 @@ async function renderPresensi(app){
     ${canShareFiles()?'<button class="btn sec sm" data-act="gambarBagikan">📤 Bagikan Gambar</button>':''}
     <button class="btn sec sm" data-act="pdfHarian">📄 PDF</button>
     <button class="btn sm" style="background:#128c7e" data-act="waPanel" id="waBtn">💬 Pesan WA Wali Santri</button></div></div>
-    <div id="list">${P.murid.length? P.murid.map((m,i)=>rowHtml(m,i)).join('') : '<div class="card muted">Tidak ada santri aktif pada kelompok ini.</div>'}</div>
+    <div id="list">${P.murid.length? P.murid.map((m,i)=>rowHtml(m,i)).join('') : '<div class="card muted">Tidak ada santri aktif pada '+esc(lbl())+' ini.</div>'}</div>
     <div class="savebar"><button class="btn" data-act="simpan" ${P.murid.length?'':'disabled'}>💾 Simpan Presensi</button></div>`;
   updateSummary();
 }
@@ -568,6 +568,9 @@ const HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 function canShareFiles(){
   try{ return !!(navigator.canShare && navigator.canShare({files:[new File(['x'],'x.pdf',{type:'application/pdf'})]})); }catch{ return false; }
 }
+/* Sebutan untuk 'kelompok' bisa diganti lewat PENGATURAN > LABEL_KELOMPOK (mis. "Kelas/Jilid") */
+const LBL = () => (S.setting.LABEL_KELOMPOK||'').trim() || 'Kelompok';
+const lbl = () => LBL().toLowerCase();
 const kota = () => S.setting.KOTA ? S.setting.KOTA+', ' : '';
 const tglIndo = s => { const [y,m,d]=s.split('-').map(Number); return `${HARI[new Date(y,m-1,d).getDay()]}, ${d} ${BULAN[m-1]} ${y}`; };
 
@@ -633,7 +636,7 @@ async function dataHarian(){
     return e ? (e.STATUS_KEHADIRAN!==r.status || (e.KETERANGAN||'')!==(r.status==='Hadir'?'':r.ket.trim())) : true; });
   if(dirty){ toast('Simpan presensi dulu agar PDF memuat data terbaru.', 3500); return null; }
   const rows = P.murid.map((m,i)=>{ const e=P.exist.get(m.ID_SANTRI); return {no:i+1, id:m.ID_SANTRI, nama:m.NAMA_SANTRI, status:e.STATUS_KEHADIRAN, ket:e.KETERANGAN||''}; });
-  if(!rows.length){ toast('Tidak ada santri pada kelompok ini.'); return null; }
+  if(!rows.length){ toast('Tidak ada santri pada '+lbl()+' ini.'); return null; }
   return {kel, rows, tanggal:P.tanggal};
 }
 function layoutHarian(d, tall){
@@ -652,7 +655,7 @@ function layoutHarian(d, tall){
       ops.push({t:'line',x1:M,y1:H-(acc+3),x2:W-M,y2:H-(acc+3),w:1.5});
       y = H-(acc+3) - 26;
       ops.push(ctr('LAPORAN PRESENSI HARIAN SANTRI',y,13,true)); y-=24;
-      const info=[['Hari / Tanggal',tglIndo(d.tanggal)],['Kelompok',d.kel.NAMA_KELOMPOK],['Guru Pengampu',d.kel.NAMA_GURU||S.user?.NAMA_GURU||'-'],['Tahun Ajaran',S.setting.TAHUN_AJARAN||'-']];
+      const info=[['Hari / Tanggal',tglIndo(d.tanggal)],[LBL(),d.kel.NAMA_KELOMPOK],['Guru Pengampu',d.kel.NAMA_GURU||S.user?.NAMA_GURU||'-'],['Tahun Ajaran',S.setting.TAHUN_AJARAN||'-']];
       info.forEach(([k,v])=>{ ops.push({t:'text',v:k,s:10,x:M,y}); ops.push({t:'text',v:': '+v,s:10,b:true,x:M+95,y}); y-=14; });
       y-=6;
     } else { ops.push({t:'text',v:`${d.kel.NAMA_KELOMPOK} - ${tglIndo(d.tanggal)} (lanjutan)`,s:9,x:M,y}); y-=18; }
@@ -762,7 +765,7 @@ function pesanWA(d, r, m){
   return `Assalamu'alaikum Wr. Wb.\n\nYth. ${ortuSapa(m)},\n\n`+
     `Kami informasikan bahwa pada ${tglIndo(d.tanggal)}, ananda *${r.nama}* (${d.kel.NAMA_KELOMPOK}) ${kal}\n`+
     `${r.ket?`Keterangan: ${r.ket}\n`:''}\nAtas perhatian Bapak/Ibu, kami ucapkan terima kasih.\n\n`+
-    `Wassalamu'alaikum Wr. Wb.\n${d.kel.NAMA_GURU||S.user?.NAMA_GURU||''}\nGuru Pengampu ${d.kel.NAMA_KELOMPOK.replace(/^kelompok\s+/i,'')}\n${mad}`;
+    `Wassalamu'alaikum Wr. Wb.\n${d.kel.NAMA_GURU||S.user?.NAMA_GURU||''}\nGuru Pengampu ${d.kel.NAMA_KELOMPOK.replace(new RegExp('^('+LBL().replace(/[.*+?^${}()|[\]\\\/]/g,'\\$&')+'|kelompok)\\s+','i'),'')}\n${mad}`;
 }
 const waKey = (d,r) => `${d.tanggal}|${r.id}|${r.status}`;
 async function tampilWA(){
@@ -838,21 +841,21 @@ async function renderRekap(app){
         ${d.list.map((o,i)=>`<tr><td class="l">${i+1}</td><td class="l">${esc(o.nama)}</td>${d.months.map((m,k)=>{const h=Object.entries(o.byDate).filter(([t,c])=>t.startsWith(m)&&c==='H').length; return `<td>${efBulan[k]?h:'-'}</td>`}).join('')}<td>${o.H}</td><td>${o.S}</td><td>${o.I}</td><td>${o.A}</td><td><b>${persen(o.H,ef)}</b></td></tr>`).join('')}</tbody></table></div>`;
     }
     const tot = d.list.reduce((a,o)=>{a.H+=o.H;a.S+=o.S;a.I+=o.I;a.A+=o.A;return a},{H:0,S:0,I:0,A:0});
-    tabel = `<p><b>${esc(judul)}</b><br>Kelompok ${esc(d.kel.NAMA_KELOMPOK)} · Guru pengampu: ${esc(d.kel.NAMA_GURU||'-')} · Hari efektif: ${ef} · Santri: ${d.list.length}<br>
+    tabel = `<p><b>${esc(judul)}</b><br>${esc(LBL())} ${esc(d.kel.NAMA_KELOMPOK)} · Guru pengampu: ${esc(d.kel.NAMA_GURU||'-')} · Hari efektif: ${ef} · Santri: ${d.list.length}<br>
       <span class="muted">Total: Hadir ${tot.H} · Sakit ${tot.S} · Izin ${tot.I} · Alpa ${tot.A} · Rata-rata hadir ${persen(tot.H, ef*d.list.length)}</span></p>` + (ef? tabel : '<p class="muted">Belum ada data presensi pada periode ini.</p>') +
       `<div class="printonly"><div class="sign"><div>Mengetahui,<br>Kepala TPQ<br><br><br><br>(................................)</div><div>${esc(kota())}${new Date().getDate()} ${BULAN[new Date().getMonth()]} ${new Date().getFullYear()}<br>Guru Pengampu<br><br><br><br>(${esc(d.kel.NAMA_GURU||'................................')})</div></div></div>`;
     S._rekap = {d, judul};
   }
   app.innerHTML = `<div class="card noprint"><h2>Rekap Presensi</h2>
-    <label class="f" for="rJenis">Rekap untuk</label><select id="rJenis"><option value="santri" selected>Santri (per kelompok)</option><option value="guru">Guru</option></select>
+    <label class="f" for="rJenis">Rekap untuk</label><select id="rJenis"><option value="santri" selected>Santri (per ${esc(lbl())})</option><option value="guru">Guru</option></select>
     <div class="grid2"><div><label class="f" for="rMode">Jenis laporan</label><select id="rMode"><option value="bulan" ${R.mode==='bulan'?'selected':''}>Bulanan</option><option value="semester" ${R.mode==='semester'?'selected':''}>Semester</option></select></div>
-    <div><label class="f" for="rKls">Kelompok</label><select id="rKls">${ks.map(k=>`<option value="${esc(k.ID_KELOMPOK)}" ${k.ID_KELOMPOK===R.kelas?'selected':''}>${esc(k.NAMA_KELOMPOK)}</option>`).join('')}</select></div></div>
+    <div><label class="f" for="rKls">${esc(LBL())}</label><select id="rKls">${ks.map(k=>`<option value="${esc(k.ID_KELOMPOK)}" ${k.ID_KELOMPOK===R.kelas?'selected':''}>${esc(k.NAMA_KELOMPOK)}</option>`).join('')}</select></div></div>
     ${R.mode==='bulan'?`<label class="f" for="rBln">Bulan</label><input id="rBln" type="month" value="${esc(R.bulan)}">`:
     `<div class="grid2"><div><label class="f" for="rSem">Semester</label><select id="rSem"><option value="Ganjil" ${R.semester==='Ganjil'?'selected':''}>1 / Ganjil (Jul–Des)</option><option value="Genap" ${R.semester==='Genap'?'selected':''}>2 / Genap (Jan–Jun)</option></select></div>
      <div><label class="f" for="rThn">Tahun ajaran mulai</label><select id="rThn">${[thn-1,thn,thn+1].map(y=>`<option value="${y}" ${String(y)===String(R.tahun)?'selected':''}>${y}/${y+1}</option>`).join('')}</select></div></div>`}
     <div class="btns" style="margin-top:12px"><button class="btn sm" data-act="cetak">🖨️ Cetak / PDF</button><button class="btn sm sec" data-act="csv">⬇️ Unduh CSV</button><button class="btn sm sec" data-act="tarikRekap">☁️ Muat data server</button></div>
-    <p class="muted">Rekap dihitung dari data di HP ini. Bila ada guru lain yang mengisi kelompok ini, tekan “Muat data server” saat online. Jika santri punya beberapa catatan di hari yang sama, dipakai yang terbaru.</p></div>
-    <div class="card">${kopHtml()}${tabel||'<p class="muted">Pilih kelompok.</p>'}</div>`;
+    <p class="muted">Rekap dihitung dari data di HP ini. Bila ada guru lain yang mengisi ${esc(lbl())} ini, tekan “Muat data server” saat online. Jika santri punya beberapa catatan di hari yang sama, dipakai yang terbaru.</p></div>
+    <div class="card">${kopHtml()}${tabel||'<p class="muted">Pilih '+lbl()+'.</p>'}</div>`;
 }
 function csvRekap(){
   if((S._rekap||{}).guru) return csvRekapGuru();
@@ -911,7 +914,7 @@ async function renderRekapGuru(app){
     `<div class="printonly"><div class="sign"><div>Mengetahui,<br>Kepala TPQ<br><br><br><br>(................................)</div><div>${esc(kota())}${new Date().getDate()} ${BULAN[new Date().getMonth()]} ${new Date().getFullYear()}<br>Koordinator<br><br><br><br>(................................)</div></div></div>`;
   S._rekap = {guru:true, d, judul};
   app.innerHTML = `<div class="card noprint"><h2>Rekap Presensi</h2>
-    <label class="f" for="rJenis">Rekap untuk</label><select id="rJenis"><option value="santri">Santri (per kelompok)</option><option value="guru" selected>Guru</option></select>
+    <label class="f" for="rJenis">Rekap untuk</label><select id="rJenis"><option value="santri">Santri (per ${esc(lbl())})</option><option value="guru" selected>Guru</option></select>
     <div class="grid2"><div><label class="f" for="rMode">Jenis laporan</label><select id="rMode"><option value="bulan" ${R.mode==='bulan'?'selected':''}>Bulanan</option><option value="semester" ${R.mode==='semester'?'selected':''}>Semester</option></select></div>
     <div>${R.mode==='bulan'?`<label class="f" for="rBln">Bulan</label><input id="rBln" type="month" value="${esc(R.bulan)}">`:`<label class="f" for="rSem">Semester</label><select id="rSem"><option value="Ganjil" ${R.semester==='Ganjil'?'selected':''}>1 / Ganjil (Jul–Des)</option><option value="Genap" ${R.semester==='Genap'?'selected':''}>2 / Genap (Jan–Jun)</option></select>`}</div></div>
     ${R.mode==='semester'?`<label class="f" for="rThn">Tahun ajaran mulai</label><select id="rThn">${[thn-1,thn,thn+1].map(y=>`<option value="${y}" ${String(y)===String(R.tahun)?'selected':''}>${y}/${y+1}</option>`).join('')}</select>`:''}
@@ -943,7 +946,7 @@ async function renderSinkron(app){
     <div class="kv"><span>Sinkron terakhir</span><b>${fmt(S.lastSync)}</b></div>
     <div class="kv"><span>Master data diperbarui</span><b>${fmt(S.lastMaster)}</b></div>
     <div class="kv"><span>ID perangkat</span><b>${esc(S.deviceId)}</b></div></div>
-    <div class="card"><h2>Data Master</h2><p class="muted">Perbarui daftar guru, kelompok, dan santri dari Google Sheets (perlu internet).</p>
+    <div class="card"><h2>Data Master</h2><p class="muted">Perbarui daftar guru, ${esc(lbl())}, dan santri dari Google Sheets (perlu internet).</p>
       <button class="btn sec" data-act="pullMaster">⬇️ Perbarui Data Master</button></div>
     ${S.installEvt?`<div class="card"><h2>Pasang Aplikasi</h2><button class="btn" data-act="install">📲 Tambahkan ke Layar Utama</button></div>`:
       (/iphone|ipad/i.test(navigator.userAgent) && !navigator.standalone?`<div class="card"><h2>Pasang Aplikasi</h2><p class="muted">Di iPhone/iPad: ketuk tombol Bagikan (kotak berpanah) lalu pilih “Tambah ke Layar Utama”.</p></div>`:'')}
