@@ -434,12 +434,12 @@ function renderBye(app){
 /* ---------- render: header / nav ---------- */
 function renderHeader(){
   const h = $('#hdr');
-  const nama = S.setting.NAMA_LEMBAGA || 'TPQ';
+  const nama = S.setting.NAMA_LEMBAGA || '';
   const n = pendingTotal();
   const net = S.online
     ? `<div class="netbar on"><span class="dot"></span><span>Terhubung - ${n ? n+' data siap disinkronkan' : 'semua data sudah tersinkron'}</span></div>`
     : `<div class="netbar off"><span class="dot"></span><span>Bekerja Offline - Data tersimpan aman di HP${n? ' ('+n+' antre)':''}</span></div>`;
-  h.innerHTML = `<div class="row"><h1>Presensi TPQ<small>${esc(nama)}</small></h1>
+  h.innerHTML = `<div class="row"><h1>Presensi Digital<small>${esc(nama)}</small></h1>
     ${S.user?`<div class="who"><div>${esc(S.user.NAMA_GURU)}</div><button class="btn sec sm" style="color:#fff;border-color:#fff" data-act="logout">Keluar</button></div>`:''}</div>${net}`;
 }
 function renderNav(){
